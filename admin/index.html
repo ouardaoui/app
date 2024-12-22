@@ -1,0 +1,289 @@
+<html><head><base href="." />
+    <title>Admin Panel - Streaming Management</title>
+    <style>
+      :root {
+        --primary: #2196F3;
+        --danger: #f44336;
+        --success: #4CAF50;
+        --dark: #333;
+      }
+    
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: 'Segoe UI', sans-serif;
+      }
+    
+      body {
+        background: #f5f5f5;
+        padding: 2rem;
+      }
+    
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+    
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+      }
+    
+      .add-user-form {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+      }
+    
+      .form-group {
+        margin-bottom: 1rem;
+      }
+    
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--dark);
+      }
+    
+      input[type="text"] {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+      }
+    
+      button {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: opacity 0.2s;
+      }
+    
+      button:hover {
+        opacity: 0.9;
+      }
+    
+      .btn-primary {
+        background: var(--primary);
+        color: white;
+      }
+    
+      .btn-danger {
+        background: var(--danger);
+        color: white;
+      }
+    
+      .users-table {
+        width: 100%;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+      }
+    
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+    
+      th, td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+    
+      th {
+        background: #f8f9fa;
+        font-weight: 600;
+      }
+    
+      .actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+    
+      .toast {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        padding: 1rem;
+        border-radius: 4px;
+        color: white;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+    
+      .toast.success {
+        background: var(--success);
+      }
+    
+      .toast.error {
+        background: var(--danger);
+      }
+    
+      .show {
+        opacity: 1;
+      }
+    </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Streaming Admin Panel</h1>
+        </div>
+    
+        <div class="add-user-form">
+          <h2>Add New User</h2>
+          <form id="addUserForm">
+            <div class="form-group">
+              <label for="macAddress">MAC Address</label>
+              <input type="text" id="macAddress" required>
+            </div>
+            <div class="form-group">
+              <label for="playlist">M3U Playlist URL</label>
+              <input type="text" id="playlist" required>
+            </div>
+            <button type="submit" class="btn-primary">Add User</button>
+          </form>
+        </div>
+    
+        <div class="users-table">
+          <table>
+            <thead>
+              <tr>
+                <th>MAC Address</th>
+                <th>Playlist</th>
+                <th>Status</th>
+                <th>Created At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <!-- Users will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    
+      <div id="toast" class="toast"></div>
+    
+    <script>
+    const API_URL = 'http://localhost:3000';
+    
+    // Show toast message
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => {
+        toast.className = 'toast';
+      }, 3000);
+    }
+    
+    // Fetch all users
+    async function fetchUsers() {
+      try {
+        const response = await fetch(`${API_URL}/admin/users`);
+        const data = await response.json();
+        displayUsers(data.users);
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+    
+    // Display users in table
+    function displayUsers(users) {
+      const tbody = document.getElementById('usersTableBody');
+      tbody.innerHTML = users.map(user => `
+        <tr>
+          <td>${user.macAddress}</td>
+          <td>${user.playlist}</td>
+          <td>${user.isAuthenticated ? 'Authenticated' : 'Not Authenticated'}</td>
+          <td>${new Date(user.createdAt).toLocaleString()}</td>
+          <td class="actions">
+            <button onclick="updateUser('${user.macAddress}')" class="btn-primary">Edit</button>
+            <button onclick="deleteUser('${user.macAddress}')" class="btn-danger">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+    
+    // Add new user
+    document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const macAddress = document.getElementById('macAddress').value;
+      const playlist = document.getElementById('playlist').value;
+    
+      try {
+        const response = await fetch(`${API_URL}/admin/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ macAddress, playlist })
+        });
+    
+        if (!response.ok) throw new Error('Failed to add user');
+    
+        showToast('User added successfully');
+        e.target.reset();
+        fetchUsers();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    });
+    
+    // Update user
+    async function updateUser(macAddress) {
+      const newPlaylist = prompt('Enter new playlist URL:');
+      if (!newPlaylist) return;
+    
+      try {
+        const response = await fetch(`${API_URL}/admin/users/${macAddress}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ playlist: newPlaylist, isAuthenticated: true })
+        });
+    
+        if (!response.ok) throw new Error('Failed to update user');
+    
+        showToast('User updated successfully');
+        fetchUsers();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+    
+    // Delete user
+    async function deleteUser(macAddress) {
+      if (!confirm('Are you sure you want to delete this user?')) return;
+    
+      try {
+        const response = await fetch(`${API_URL}/admin/users/${macAddress}`, {
+          method: 'DELETE'
+        });
+    
+        if (!response.ok) throw new Error('Failed to delete user');
+    
+        showToast('User deleted successfully');
+        fetchUsers();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+    
+    // Initial load
+    fetchUsers();
+    </script>
+    
+    </body></html>

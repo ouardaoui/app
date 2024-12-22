@@ -4,7 +4,16 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 
+
+const corsOptions = {
+  origin: true, // Replace with your allowed origin
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
 const app = express();
+app.use(cors(corsOptions));
 app.use(cors());
 app.use(express.json());
 
